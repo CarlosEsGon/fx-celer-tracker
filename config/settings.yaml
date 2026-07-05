@@ -1,0 +1,41 @@
+# Non-secret app settings. Secrets and environment-specific URLs live in .env.
+
+voice:
+  enabled: true
+  rate_wpm: 175          # speech rate
+  mute_minutes: 0        # temporary mute; 0 = off
+
+popup:
+  digest_threshold: 5    # more than N trades in one burst -> single digest popup
+  auto_close_seconds: 0  # 0 = stay open until dismissed
+
+analytics:
+  # valuation date convention: trade_date (default) or spot (T+2, when confirmed)
+  valuation_date: trade_date
+  day_count: 360
+
+# Flat discount rates per currency. Used directly when MARKET_DATA=blpapi
+# (no mock /curves endpoint available); the mock provider fetches from the
+# mock server's /curves endpoint instead.
+discount_rates:
+  USD: 0.045
+  EUR: 0.030
+  GBP: 0.041
+  JPY: 0.005
+  CHF: 0.012
+  AUD: 0.038
+  CAD: 0.035
+  default: 0.030
+
+tenor_buckets:
+  # upper bound in calendar days -> label (checked in order)
+  - [1, ON]
+  - [2, TN]
+  - [9, 1W]
+  - [16, 2W]
+  - [45, 1M]
+  - [75, 2M]
+  - [135, 3M]
+  - [225, 6M]
+  - [320, 9M]
+  - [400, 1Y]

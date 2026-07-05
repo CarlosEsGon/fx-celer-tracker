@@ -1,0 +1,21 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # customtkinter/pyttsx3 are desktop-only; CI covers core + mock server logic
+      - name: Install test dependencies
+        run: |
+          pip install fastapi "uvicorn[standard]" websockets httpx pydantic \
+                      python-dotenv PyYAML pytest pytest-asyncio
+      - name: Run tests
+        run: pytest

@@ -1,0 +1,18 @@
+{
+  "trade_id": "FXO-20260705-001",
+  "product_type": "FX_OUTRIGHT",
+  "currency_pair": "GBP/USD",
+  "base_currency": "GBP",
+  "quote_currency": "USD",
+  "trade_date": "2026-07-05",
+  "leg": {
+    "value_date": "2026-10-07",
+    "base_amount": -500000,
+    "quote_amount": 635000,
+    "rate": 1.2700
+  },
+  "counterparty": "MOCK_BANK",
+  "booked_at": "2026-07-05T15:00:00Z",
+  "status": "NEW",
+  "version": 1
+}

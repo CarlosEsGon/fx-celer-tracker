@@ -1,0 +1,16 @@
+fastapi>=0.111
+uvicorn[standard]>=0.30
+websockets>=14.0
+httpx>=0.27
+pydantic>=2.7
+python-dotenv>=1.0
+PyYAML>=6.0
+customtkinter>=5.2
+pyttsx3>=2.90
+pytest>=8.2
+pytest-asyncio>=0.23
+
+# blpapi is intentionally NOT listed: it requires Bloomberg's package index and a
+# terminal. Install at work with:
+#   pip install blpapi --index-url=https://blpapi.bloomberg.com/repository/releases/python/simple/
+# The app imports it lazily, only when MARKET_DATA=blpapi.

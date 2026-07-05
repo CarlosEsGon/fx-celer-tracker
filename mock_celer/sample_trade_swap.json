@@ -1,0 +1,24 @@
+{
+  "trade_id": "FXS-20260705-001",
+  "product_type": "FX_SWAP",
+  "currency_pair": "EUR/USD",
+  "base_currency": "EUR",
+  "quote_currency": "USD",
+  "trade_date": "2026-07-05",
+  "near_leg": {
+    "value_date": "2026-07-07",
+    "base_amount": 1000000,
+    "quote_amount": -1165000,
+    "rate": 1.1650
+  },
+  "far_leg": {
+    "value_date": "2026-10-07",
+    "base_amount": -1000000,
+    "quote_amount": 1168000,
+    "rate": 1.1680
+  },
+  "counterparty": "MOCK_BANK",
+  "booked_at": "2026-07-05T14:30:00Z",
+  "status": "NEW",
+  "version": 1
+}
