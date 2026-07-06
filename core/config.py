@@ -20,12 +20,16 @@ class Settings:
     mock_rest_url: str = "http://localhost:8000"
     mock_ws_url: str = "ws://localhost:8000/ws/trades"
 
-    # real celer
+    # real celer (websocket)
     celer_ws_url: str = ""
     celer_rest_url: str = ""
     celer_auth_header_name: str = "Authorization"
     celer_auth_header_value: str = ""
     capture_raw: bool = True
+
+    # histTrades REST endpoint (verified real source)
+    hist_trades_url: str = "http://localhost:8051/histTrades"
+    hist_poll_interval_sec: float = 2.0
 
     # blpapi
     blpapi_host: str = "localhost"
@@ -72,6 +76,10 @@ def load_settings(
         "CELER_AUTH_HEADER_VALUE", s.celer_auth_header_value
     )
     s.capture_raw = _bool(os.getenv("CAPTURE_RAW"), s.capture_raw)
+    s.hist_trades_url = os.getenv("HIST_TRADES_URL", s.hist_trades_url)
+    s.hist_poll_interval_sec = float(
+        os.getenv("HIST_POLL_INTERVAL_SEC", str(s.hist_poll_interval_sec))
+    )
     s.blpapi_host = os.getenv("BLPAPI_HOST", s.blpapi_host)
     s.blpapi_port = int(os.getenv("BLPAPI_PORT", str(s.blpapi_port)))
     s.blpapi_tick_window_sec = int(
@@ -99,6 +107,12 @@ def load_settings(
 def build_feed(s: Settings):
     from core.trade_feed import MockCelerFeed, RealCelerFeed
 
+    if s.trade_feed in ("histtrades", "hist"):
+        from core.hist_trades import HistTradesFeed
+
+        return HistTradesFeed(
+            url=s.hist_trades_url, poll_interval_sec=s.hist_poll_interval_sec
+        )
     if s.trade_feed == "celer":
         if not s.celer_ws_url:
             raise ValueError("TRADE_FEED=celer requires CELER_WS_URL in .env")

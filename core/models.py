@@ -46,6 +46,9 @@ class Trade(BaseModel):
     booked_at: datetime
     status: TradeStatus = TradeStatus.NEW
     version: int = 1
+    # Full raw source record (e.g. the /histTrades payload) for audit; fields
+    # we don't derive logic from are preserved here verbatim.
+    extras: dict = {}
 
     @model_validator(mode="after")
     def _check_legs(self) -> "Trade":
