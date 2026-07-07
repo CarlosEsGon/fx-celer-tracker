@@ -14,6 +14,7 @@ def fx_rates() -> dict[str, float]:
         "GBPUSD": 1.2700,
         "USDJPY": 145.00,
         "AUDUSD": 0.6600,
+        "USDCHF": 0.8070,
     }
 
 

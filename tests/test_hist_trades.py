@@ -303,3 +303,116 @@ def test_parsed_swap_flows_through_analyzer(fx_rates):
     assert a.spot_exposure_base == pytest.approx(1_000_000)
     assert a.spot_exposure_usd == pytest.approx(1_000_000 * 1.1650)
     assert a.inception_pnl_usd != 0
+
+
+# ---- EUR/CHF non-USD cross, 1,000,000 EUR notional -----------------------------
+#
+# Adapted from the documented /histTrades SWAP example for a cross (neither leg
+# USD): securityId EUR/CHF, base EUR, currency CHF, triangulated via
+# u1=EUR/USD / u2=USD/CHF. Notional scaled down from the doc's 280m to 1m EUR
+# to make the economics easy to check by hand.
+
+EURCHF_SWAP_REC = {
+    "id": "sid_3000000000000000001",
+    "orderId": "3000000000000000002",
+    "sourceExecutionId": "3000000000000000001",
+    "quoteId": "3000000000000000003",
+    "external_qid": "6d5428ad-5ae4-4ee7-9644-8ba6f34cb28d",
+    "trader": "SYSTEM_USER",
+    "account": "GEFL",
+    "portfolio": "EBOOK",
+    "time": "2026-07-07T09:50:18.024Z",
+    "productType": "SWAP",
+    "securityId": "EUR/CHF",
+    "base": "EUR",
+    "currency": "CHF",
+    "orderType": "PREVIOUSLY_QUOTED",
+    "executionMethod": "RFQ",
+    "merchantOrderType": "",
+    "clob_type": "",
+    "ignore": "IS_SWAP",
+    "trade_side": "SELL",
+    "near_leg_side": "SELL",
+    "far_leg_side": "BUY",
+    "expectedSide": "SELL",
+    "near_leg_spot": 922060,
+    "near_leg_points": 148,
+    "near_leg_price": 922208,
+    "far_leg_spot": 922060,
+    "far_leg_points": -241,
+    "far_leg_price": 921818,
+    "trade_price": 922060,
+    "mid_0": 921975,
+    "est_trader_price": 922175,
+    "trader_price": "NaN",
+    "u1": "EUR/USD",
+    "u2": "USD/CHF",
+    "u1_mid": 1142555,
+    "u2_mid": 806940,
+    "reference_rates": "USD/CHF:0.806945",
+    "priceSource": "",
+    "commission": 0,
+    "near_leg_qty": 1_000_000_000_000,
+    "far_leg_qty": 1_000_000_000_000,
+    "parent_order_qty": 1_000_000_000_000,
+    "swap_qty": 0,
+    "spot_base_qty": 0,
+    "spot_terms_qty": 0,
+    "new_terms_qty": 0,
+    "near_leg_settlementDate": "2026-07-07",
+    "far_leg_settlementDate": "2026-07-13",
+    "near_leg_tenor": "TOD",
+    "far_leg_tenor": "B",
+    "m0_time": "2026-07-07T09:50:17.715Z",
+    "m0_age": {"j": 309000000},
+    "destinationKey": "PE_BNS",
+    "stream_code": "BNS_NSP_AI",
+    "orderText": "",
+}
+
+
+def test_eurchf_cross_not_skipped():
+    """EUR/CHF has no CAD leg and isn't SPOT, so it must survive the new filters."""
+    assert parse_record(EURCHF_SWAP_REC) is not None
+
+
+def test_eurchf_cross_maps_with_both_legs():
+    t = parse_record(EURCHF_SWAP_REC).trade
+    assert t.product_type == ProductType.FX_SWAP
+    assert t.currency_pair == "EUR/CHF"
+    assert t.base_currency == "EUR"
+    assert t.quote_currency == "CHF"
+    assert t.near_leg.rate == pytest.approx(0.922208)
+    assert t.far_leg.rate == pytest.approx(0.921818)
+
+
+def test_eurchf_cross_dealt_currency_is_terms_not_base():
+    """`currency` is CHF (terms) here, not EUR (base) — confirms the parser's
+    "never assume base" rule (module docstring) actually engages for a cross:
+    base_amount is derived by dividing the CHF qty by the all-in rate, NOT by
+    treating the raw 1,000,000 qty as already being the EUR notional."""
+    t = parse_record(EURCHF_SWAP_REC).trade
+    # dealt_ccy (CHF) != base_ccy (EUR) -> base = qty / rate, then signed for SELL
+    expected_near_base = -1_000_000 / 0.922208
+    assert t.near_leg.base_amount == pytest.approx(expected_near_base, rel=1e-6)
+    assert t.near_leg.base_amount != pytest.approx(-1_000_000, abs=1.0)
+
+
+def test_eurchf_cross_flows_through_analyzer(fx_rates):
+    """USD exposure triangulates EUR->USD and CHF->USD independently, per
+    core/fx.py's design — no direct EUR/CHF rate is looked up."""
+    from core.analyzer import analyze_trade
+    from core.models import MidSnapshot
+
+    t = parse_record(EURCHF_SWAP_REC).trade
+    mid = MidSnapshot(
+        pair="EUR/CHF",
+        value_date=t.far_leg.value_date,
+        spot_mid=0.922060,
+        swap_points_mid=-0.000389,
+        forward_mid=0.921671,
+        as_of=t.booked_at,
+    )
+    a = analyze_trade(t, mid, fx_rates, quote_ccy_rate=0.0175)
+    assert a.tenor_days == 6  # 2026-07-07 -> 2026-07-13
+    assert a.inception_pnl_usd != 0
