@@ -259,19 +259,23 @@ def test_missing_near_essentials_skipped():
     assert parse_record(bad) is None
 
 
-def test_spot_treated_as_outright():
-    spot = dict(
-        FORWARD_REC,
-        productType="SPOT",
-        near_leg_points=0,
-        near_leg_price=1269000,
-        near_leg_settlementDate="2026-07-08",
-        spot_base_qty=-500394011000,
-        new_terms_qty=635000000000,
-    )
-    parsed = parse_record(spot)
-    assert parsed.trade.product_type == ProductType.FX_OUTRIGHT
-    assert parsed.trade.leg.rate == pytest.approx(1.269000)
+def test_spot_skipped_as_not_relevant():
+    spot = dict(FORWARD_REC, productType="SPOT")
+    assert parse_record(spot) is None
+
+
+def test_cad_base_pair_skipped():
+    cad = dict(FORWARD_REC, securityId="CAD/USD", base="CAD")
+    assert parse_record(cad) is None
+
+
+def test_cad_terms_pair_skipped():
+    cad = dict(FORWARD_REC, securityId="USD/CAD", base="USD", currency="CAD")
+    assert parse_record(cad) is None
+
+
+def test_non_cad_pair_not_skipped():
+    assert parse_record(FORWARD_REC) is not None
 
 
 def test_counterparty_from_destination_key():

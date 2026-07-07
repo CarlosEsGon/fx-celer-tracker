@@ -8,7 +8,8 @@ Implements the verified field specification for GET <host>/histTrades:
   - near_leg_qty/far_leg_qty are denominated in the `currency` field, which
     may be the pair's base OR terms currency — never assume
   - base notional: qty (if dealt in base) or qty / all-in rate (if in terms)
-  - productType is the only product classifier (SPOT | FORWARD | SWAP)
+  - productType is the only product classifier (SPOT | FORWARD | SWAP);
+    SPOT records and any CAD-cross record are skipped as not relevant
   - leg-level sides come from near_leg_side/far_leg_side; trade_side is NOT
     interchangeable with them (observed matching the FAR leg on swaps)
   - do not derive logic from: swap_qty, new_terms_qty, trader_price, u1*/u2*,
@@ -203,6 +204,16 @@ def parse_record(rec: dict) -> Optional[ParsedRecord]:
     if product not in ("SPOT", "FORWARD", "SWAP"):
         log.warning("histTrades: unknown productType %r (id=%s) — skipped",
                     product, rec.get("id"))
+        return None
+
+    if product == "SPOT":
+        log.debug("histTrades: SPOT record %s not relevant — skipped", rec.get("id"))
+        return None
+
+    pair_ccys = str(rec.get("securityId", "")).split("/")
+    if "CAD" in pair_ccys:
+        log.debug("histTrades: CAD pair %s (id=%s) not relevant — skipped",
+                   rec.get("securityId"), rec.get("id"))
         return None
 
     _track_ignore_value(rec.get("ignore", ""))
