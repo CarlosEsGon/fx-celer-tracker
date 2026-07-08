@@ -53,10 +53,8 @@ class TradePopup(ctk.CTkToplevel):
         rows: list[tuple[str, str, str | None]] = [
             ("Near / far value date",
              f"{a.near_value_date}  →  {a.far_value_date or '—'}", None),
-            ("Leg PV near / far (USD)",
-             f"{_fmt_amount(a.pv_near_leg_usd, 'USD')}   /   {_fmt_amount(a.pv_far_leg_usd, 'USD')}",
-             None),
-            ("Spot exposure (near + far)",
+            # Net PV of the two legs — that is all the spot risk there is.
+            ("Spot risk (USD)",
              _fmt_amount(a.spot_exposure_usd, 'USD'),
              None),
             ("BBG mid (spot / pts / fwd)",

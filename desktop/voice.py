@@ -41,7 +41,7 @@ def trade_summary(a: TradeAnalysis) -> str:
     product = "swap" if a.product_type == "FX_SWAP" else "outright"
     parts = [
         f"New {pair_spoken} {tenor} {product}.",
-        f"Spot exposure {_spoken_amount(a.spot_exposure_usd, 'dollars')}.",
+        f"Spot risk {_spoken_amount(a.spot_exposure_usd, 'dollars')}.",
         f"Inception P and L {_spoken_amount(a.inception_pnl_usd, 'dollars')}.",
     ]
     if a.mid_fallback:
