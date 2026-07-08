@@ -76,16 +76,6 @@ class TradePopup(ctk.CTkToplevel):
                 row=r, column=1, padx=(0, 16), pady=2, sticky="w")
             r += 1
 
-        pnl_colour = GREEN if a.inception_pnl_usd >= 0 else RED
-        ctk.CTkLabel(self, text="Inception PnL",
-                     font=ctk.CTkFont(size=13, weight="bold")).grid(
-            row=r, column=0, padx=(16, 10), pady=(10, 2), sticky="w")
-        ctk.CTkLabel(self, text=_fmt_amount(a.inception_pnl_usd, "USD"),
-                     font=ctk.CTkFont(size=15, weight="bold"),
-                     text_color=pnl_colour).grid(
-            row=r, column=1, padx=(0, 16), pady=(10, 2), sticky="w")
-        r += 1
-
         ctk.CTkButton(self, text="Dismiss", width=90, command=self.destroy).grid(
             row=r, column=1, padx=16, pady=(10, 14), sticky="e")
 
