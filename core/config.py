@@ -19,6 +19,7 @@ class Settings:
     # selection
     trade_feed: str = "mock"          # mock | celer
     market_data: str = "mock"         # mock | blpapi
+    discount_source: str = "mock"     # mock | das
 
     # mock server
     mock_rest_url: str = "http://localhost:8000"
@@ -73,6 +74,7 @@ def load_settings(
     s = Settings()
     s.trade_feed = os.getenv("TRADE_FEED", s.trade_feed).lower()
     s.market_data = os.getenv("MARKET_DATA", s.market_data).lower()
+    s.discount_source = os.getenv("DISCOUNT_SOURCE", s.discount_source).lower()
     s.mock_rest_url = os.getenv("MOCK_REST_URL", s.mock_rest_url)
     s.mock_ws_url = os.getenv("MOCK_WS_URL", s.mock_ws_url)
     s.celer_ws_url = os.getenv("CELER_WS_URL", s.celer_ws_url)
@@ -163,6 +165,14 @@ def build_market_data(s: Settings):
             host=s.blpapi_host,
             port=s.blpapi_port,
             tick_window_sec=s.blpapi_tick_window_sec,
-            discount_rates=s.discount_rates,
         )
     return MockBloombergProvider(rest_url=s.mock_rest_url)
+
+
+def build_discount_curve(s: Settings):
+    from core.discount_curve import DasDiscountCurve, MockDiscountCurve
+
+    if s.discount_source == "das":
+        return DasDiscountCurve()
+    usd_rate = s.discount_rates.get("USD", s.discount_rates.get("DEFAULT", 0.045))
+    return MockDiscountCurve(usd_rate)

@@ -16,8 +16,8 @@ from datetime import date, timedelta
 from typing import Optional
 
 from core.analyzer import analyze_trade
-from core.config import Settings, build_feed, build_market_data
-from core.models import Trade, TradeAnalysis, TradeStatus
+from core.config import Settings, build_discount_curve, build_feed, build_market_data
+from core.models import ProductType, Trade, TradeAnalysis, TradeStatus
 from core.store import TradeStore
 from core.trade_feed import FeedEvent
 
@@ -43,6 +43,7 @@ class FeedListener:
         self._ui = ui_queue
         self._feed = build_feed(settings)
         self._market = build_market_data(settings)
+        self._curve = build_discount_curve(settings)
         self._pending: list[Trade] = []          # trades awaiting a mid retry
         self._thread: Optional[threading.Thread] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -138,6 +139,7 @@ class FeedListener:
             return None
 
     def _analyse_and_store(self, trade: Trade) -> Optional[TradeAnalysis]:
+        val_date = self._valuation_date(trade)
         try:
             mid = self._market.get_mid(
                 trade.currency_pair,
@@ -145,7 +147,8 @@ class FeedListener:
                 trade.booked_at,
             )
             fx_rates = self._market.get_fx_rates()
-            rate = self._market.get_discount_rate(trade.quote_currency)
+            df_near = self._curve.get_df(val_date, self._near_settlement(trade))
+            df_far = self._curve.get_df(val_date, trade.discounted_leg.value_date)
         except Exception:
             log.exception("market data failed for %s; queued for retry", trade.trade_id)
             self._pending.append(trade)
@@ -154,8 +157,8 @@ class FeedListener:
             return None
 
         analysis = analyze_trade(
-            trade, mid, fx_rates, rate,
-            valuation_date=self._valuation_date(trade),
+            trade, mid, fx_rates, df_near, df_far,
+            valuation_date=val_date,
         )
         self._store.save_analysis(analysis)
         log.info(
@@ -179,6 +182,13 @@ class FeedListener:
         if threshold > 0 and abs(analysis.spot_exposure_usd) < threshold:
             return False
         return True
+
+    def _near_settlement(self, trade: Trade) -> date:
+        """Settlement date of the near leg. Outrights are valued as a matched
+        swap, so their synthetic near leg (the spot hedge) settles at spot."""
+        if trade.product_type == ProductType.FX_SWAP:
+            return trade.near_leg.value_date
+        return trade.trade_date + timedelta(days=2)
 
     def _valuation_date(self, trade: Trade) -> date:
         if self._settings.valuation_date_mode == "spot":

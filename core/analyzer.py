@@ -14,7 +14,8 @@ def analyze_trade(
     trade: Trade,
     mid: MidSnapshot,
     fx_rates: Mapping[str, float],
-    quote_ccy_rate: float,
+    df_near: float,
+    df_far: float,
     valuation_date: date | None = None,
 ) -> TradeAnalysis:
     val_date = valuation_date or trade.trade_date
@@ -22,15 +23,12 @@ def analyze_trade(
     days, label = identify_tenor(trade, val_date)
 
     spot_base = exposure.spot_exposure_base(trade)
-    spot_usd = exposure.spot_exposure_usd(trade, fx_rates)
-    npv_quote = exposure.npv_far_leg_quote(trade, val_date, quote_ccy_rate)
-    npv_usd = exposure.npv_far_leg_usd(trade, val_date, quote_ccy_rate, fx_rates)
-    combined = exposure.combined_risk_usd(spot_usd, npv_usd)
+    pv_near_usd = exposure.pv_near_leg_usd(trade, fx_rates, df_near)
+    pv_far_usd = exposure.pv_far_leg_usd(trade, fx_rates, df_far)
+    spot_usd = pv_near_usd + pv_far_usd
     mismatch = exposure.notional_mismatch_base(trade)
 
-    pnl_quote_pv, pnl_usd = pnl.inception_pnl(
-        trade, mid, val_date, quote_ccy_rate, fx_rates
-    )
+    pnl_quote, pnl_usd = pnl.inception_pnl(trade, mid, df_far, fx_rates)
 
     return TradeAnalysis(
         trade_id=trade.trade_id,
@@ -40,14 +38,13 @@ def analyze_trade(
         tenor_days=days,
         spot_exposure_base=spot_base,
         spot_exposure_usd=spot_usd,
-        npv_far_leg_quote=npv_quote,
-        npv_far_leg_usd=npv_usd,
-        combined_risk_usd=combined,
+        pv_near_leg_usd=pv_near_usd,
+        pv_far_leg_usd=pv_far_usd,
         bbg_spot_mid=mid.spot_mid,
         bbg_swap_points_mid=mid.swap_points_mid,
         bbg_forward_mid=mid.forward_mid,
         bbg_as_of=mid.as_of,
-        inception_pnl_quote=pnl_quote_pv,
+        inception_pnl_quote=pnl_quote,
         inception_pnl_usd=pnl_usd,
         notional_mismatch_base=mismatch,
         mid_fallback=mid.fallback,

@@ -33,7 +33,7 @@ class TradePopup(ctk.CTkToplevel):
         self.geometry("+80+80")
         self.resizable(False, False)
 
-        base_ccy, quote_ccy = a.currency_pair.split("/")
+        base_ccy = a.currency_pair.split("/")[0]
 
         header = ctk.CTkLabel(
             self,
@@ -53,17 +53,13 @@ class TradePopup(ctk.CTkToplevel):
         rows: list[tuple[str, str, str | None]] = [
             ("Near / far value date",
              f"{a.near_value_date}  →  {a.far_value_date or '—'}", None),
-            ("Spot exposure",
-             f"{_fmt_amount(a.spot_exposure_base, base_ccy)}   ({_fmt_amount(a.spot_exposure_usd, 'USD')})",
+            # Net PV of the two legs — that is all the spot risk there is.
+            ("Spot risk (USD)",
+             _fmt_amount(a.spot_exposure_usd, 'USD'),
              None),
-            ("Far-leg NPV",
-             f"{_fmt_amount(a.npv_far_leg_quote, quote_ccy)}   ({_fmt_amount(a.npv_far_leg_usd, 'USD')})",
-             None),
-            ("BBG mid (spot / pts / fwd)",
-             f"{a.bbg_spot_mid:.5f} / {a.bbg_swap_points_mid:.2f} / {a.bbg_forward_mid:.5f}"
-             + ("   [FALLBACK]" if a.mid_fallback else ""),
-             AMBER if a.mid_fallback else None),
         ]
+        if a.mid_fallback:
+            rows.append(("Mid quote", "[FALLBACK]", AMBER))
         if a.notional_mismatch_base:
             rows.append(
                 ("Uneven swap mismatch",
@@ -79,24 +75,6 @@ class TradePopup(ctk.CTkToplevel):
                          text_color=colour or ("gray10", "gray90")).grid(
                 row=r, column=1, padx=(0, 16), pady=2, sticky="w")
             r += 1
-
-        pnl_colour = GREEN if a.inception_pnl_usd >= 0 else RED
-        ctk.CTkLabel(self, text="Inception PnL",
-                     font=ctk.CTkFont(size=13, weight="bold")).grid(
-            row=r, column=0, padx=(16, 10), pady=(10, 2), sticky="w")
-        ctk.CTkLabel(self, text=_fmt_amount(a.inception_pnl_usd, "USD"),
-                     font=ctk.CTkFont(size=15, weight="bold"),
-                     text_color=pnl_colour).grid(
-            row=r, column=1, padx=(0, 16), pady=(10, 2), sticky="w")
-        r += 1
-
-        ctk.CTkLabel(self, text="Combined risk",
-                     font=ctk.CTkFont(size=13, weight="bold")).grid(
-            row=r, column=0, padx=(16, 10), pady=(0, 2), sticky="w")
-        ctk.CTkLabel(self, text=_fmt_amount(a.combined_risk_usd, "USD"),
-                     font=ctk.CTkFont(size=15, weight="bold")).grid(
-            row=r, column=1, padx=(0, 16), pady=(0, 2), sticky="w")
-        r += 1
 
         ctk.CTkButton(self, text="Dismiss", width=90, command=self.destroy).grid(
             row=r, column=1, padx=16, pady=(10, 14), sticky="e")

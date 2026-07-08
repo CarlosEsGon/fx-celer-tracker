@@ -39,12 +39,9 @@ def trade_summary(a: TradeAnalysis) -> str:
     pair_spoken = a.currency_pair.replace("/", " ")
     tenor = _TENOR_WORDS.get(a.tenor_label, a.tenor_label)
     product = "swap" if a.product_type == "FX_SWAP" else "outright"
-    base_ccy = a.currency_pair.split("/")[0]
     parts = [
         f"New {pair_spoken} {tenor} {product}.",
-        f"Spot exposure {_spoken_amount(a.spot_exposure_base, base_ccy)}.",
-        f"Inception P and L {_spoken_amount(a.inception_pnl_usd, 'dollars')}.",
-        f"Combined risk {_spoken_amount(a.combined_risk_usd, 'dollars')}.",
+        f"Spot risk {_spoken_amount(a.spot_exposure_usd, 'dollars')}.",
     ]
     if a.mid_fallback:
         parts.append("Mid is a fallback quote.")

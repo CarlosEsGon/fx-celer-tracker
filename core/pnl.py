@@ -14,16 +14,15 @@ FX_SWAP, uneven notionals — priced leg by leg:
     near leg vs spot mid, far leg vs forward mid, sum of the two.
     Reduces to the points formula when notionals match.
 
-All results are discounted to the valuation date with the ACT/360 DF and
-converted to USD.
+The USD result is converted from quote currency first, then discounted with
+the USD discount factor for the discounted leg's value date (USD approach —
+same convention as the leg PVs in core/exposure.py).
 """
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Mapping
 
-from core.discount import discount_factor
 from core.fx import convert_to_usd
 from core.models import MidSnapshot, ProductType, Trade
 
@@ -62,13 +61,12 @@ def inception_pnl_quote(trade: Trade, mid: MidSnapshot) -> float:
 def inception_pnl(
     trade: Trade,
     mid: MidSnapshot,
-    valuation_date: date,
-    quote_ccy_rate: float,
+    df_far: float,
     fx_rates: Mapping[str, float],
 ) -> tuple[float, float]:
-    """Returns (pnl_quote_pv, pnl_usd), discounted to valuation_date."""
+    """Returns (pnl_quote, pnl_usd). The quote figure is undiscounted; the USD
+    figure is the quote PnL converted to USD then multiplied by the USD DF for
+    the discounted leg's value date."""
     raw = inception_pnl_quote(trade, mid)
-    df = discount_factor(valuation_date, trade.discounted_leg.value_date, quote_ccy_rate)
-    pnl_quote_pv = raw * df
-    pnl_usd = convert_to_usd(pnl_quote_pv, trade.quote_currency, fx_rates)
-    return pnl_quote_pv, pnl_usd
+    pnl_usd = convert_to_usd(raw, trade.quote_currency, fx_rates) * df_far
+    return raw, pnl_usd

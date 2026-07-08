@@ -16,9 +16,10 @@ analytics:
   valuation_date: trade_date
   day_count: 360
 
-# Flat discount rates per currency. Used directly when MARKET_DATA=blpapi
-# (no mock /curves endpoint available); the mock provider fetches from the
-# mock server's /curves endpoint instead.
+# Flat discount rates for the mock discount curve (DISCOUNT_SOURCE=mock).
+# All discounting follows the USD approach, so only the USD entry (with
+# `default` as fallback) is used; at work DISCOUNT_SOURCE=das takes ready-made
+# discount factors from das_client instead.
 discount_rates:
   USD: 0.045
   EUR: 0.030
