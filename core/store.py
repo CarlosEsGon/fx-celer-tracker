@@ -210,6 +210,19 @@ class TradeStore:
             writer.writerows(rows)
         return len(rows)
 
+    def distinct_currencies(self) -> list[str]:
+        """All base/quote currencies seen across booked trades, for populating
+        the popup settings 'other currencies' list."""
+        cur = self._conn.execute("SELECT DISTINCT currency_pair FROM trades")
+        ccys: set[str] = set()
+        for row in cur.fetchall():
+            pair = row["currency_pair"]
+            if "/" in pair:
+                base, quote = pair.split("/", 1)
+                ccys.add(base.strip().upper())
+                ccys.add(quote.strip().upper())
+        return sorted(ccys)
+
     def load_trade(self, trade_id: str, version: int) -> Optional[Trade]:
         cur = self._conn.execute(
             "SELECT raw_json FROM trades WHERE trade_id = ? AND version = ?",

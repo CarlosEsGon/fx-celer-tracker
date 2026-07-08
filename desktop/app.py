@@ -20,6 +20,7 @@ from core.store import TradeStore
 from desktop.listener import FeedListener, UiEvent
 from desktop.logging_setup import setup_logging
 from desktop.popup import DigestPopup, NoticePopup, TradePopup, notice_for_removal
+from desktop.settings_window import SettingsWindow
 from desktop.voice import VoiceAnnouncer, digest_summary, trade_summary
 
 log = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ class TrackerApp:
         ctk.set_appearance_mode("dark")
         self.root = ctk.CTk()
         self.root.title("FX Celer Trade Tracker")
-        self.root.geometry("420x190")
+        self.root.geometry("420x220")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._burst: list = []          # analyses buffered inside the burst window
@@ -78,14 +79,23 @@ class TrackerApp:
                                         text_color="gray65")
         self.count_label.pack(anchor="w", padx=18, pady=(4, 0))
 
+        controls_row = ctk.CTkFrame(self.root, fg_color="transparent")
+        controls_row.pack(fill="x", padx=18, pady=(12, 0))
+
         self.voice_switch = ctk.CTkSwitch(
-            self.root, text="Voice announcements", command=self._toggle_voice)
+            controls_row, text="Voice announcements", command=self._toggle_voice)
         if self.settings.voice_enabled:
             self.voice_switch.select()
-        self.voice_switch.pack(anchor="w", padx=18, pady=(12, 0))
+        self.voice_switch.pack(side="left")
+
+        ctk.CTkButton(controls_row, text="Popup settings…", width=130,
+                     command=self._open_settings).pack(side="right")
 
     def _toggle_voice(self) -> None:
         self.voice.enabled = bool(self.voice_switch.get())
+
+    def _open_settings(self) -> None:
+        SettingsWindow(self.root, self.settings, self.store)
 
     def _set_status(self, status: str, detail: str = "") -> None:
         colour = STATUS_COLOURS.get(status, "gray65")

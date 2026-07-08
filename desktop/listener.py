@@ -95,6 +95,8 @@ class FeedListener:
                 analysis = self._process_trade(event.trade)
                 if analysis is None:
                     continue
+                if not self._should_notify(analysis):
+                    continue
                 if in_catchup or event.catchup:
                     catchup_batch.append(analysis)
                 else:
@@ -164,6 +166,20 @@ class FeedListener:
         )
         return analysis
 
+    def _should_notify(self, analysis: TradeAnalysis) -> bool:
+        """Popup filter: currency must be watched AND exposure must clear the
+        threshold (both settings are user-configurable, live, via the Settings
+        window). Persistence/analytics are unaffected either way."""
+        watched = self._settings.watched_currencies
+        if watched:
+            base_ccy, _, quote_ccy = analysis.currency_pair.partition("/")
+            if base_ccy.upper() not in watched and quote_ccy.upper() not in watched:
+                return False
+        threshold = self._settings.exposure_threshold_usd
+        if threshold > 0 and abs(analysis.spot_exposure_usd) < threshold:
+            return False
+        return True
+
     def _valuation_date(self, trade: Trade) -> date:
         if self._settings.valuation_date_mode == "spot":
             return trade.trade_date + timedelta(days=2)
@@ -180,5 +196,5 @@ class FeedListener:
             log.info("retrying market data for %d pending trade(s)", len(retrying))
             for trade in retrying:
                 analysis = self._analyse_and_store(trade)
-                if analysis is not None:
+                if analysis is not None and self._should_notify(analysis):
                     self._ui.put(UiEvent(kind="trade", analysis=analysis))
