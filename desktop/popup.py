@@ -57,11 +57,9 @@ class TradePopup(ctk.CTkToplevel):
             ("Spot risk (USD)",
              _fmt_amount(a.spot_exposure_usd, 'USD'),
              None),
-            ("BBG mid (spot / pts / fwd)",
-             f"{a.bbg_spot_mid:.5f} / {a.bbg_swap_points_mid:.2f} / {a.bbg_forward_mid:.5f}"
-             + ("   [FALLBACK]" if a.mid_fallback else ""),
-             AMBER if a.mid_fallback else None),
         ]
+        if a.mid_fallback:
+            rows.append(("Mid quote", "[FALLBACK]", AMBER))
         if a.notional_mismatch_base:
             rows.append(
                 ("Uneven swap mismatch",
