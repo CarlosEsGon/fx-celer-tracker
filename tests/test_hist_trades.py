@@ -301,7 +301,8 @@ def test_parsed_swap_flows_through_analyzer(fx_rates):
     a = analyze_trade(t, mid, fx_rates, 1.0, 0.9999)
     assert a.tenor_days == 1          # T/N: one day between legs
     assert a.spot_exposure_base == pytest.approx(1_000_000)
-    assert a.spot_exposure_usd == pytest.approx(1_000_000 * 1.1650)
+    # near +1M EUR -> +1,165,000 USD leg PV at DF_near = 1.0
+    assert a.pv_near_leg_usd == pytest.approx(1_000_000 * 1.1650)
     assert a.inception_pnl_usd != 0
 
 

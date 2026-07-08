@@ -53,11 +53,11 @@ class TradePopup(ctk.CTkToplevel):
         rows: list[tuple[str, str, str | None]] = [
             ("Near / far value date",
              f"{a.near_value_date}  →  {a.far_value_date or '—'}", None),
-            ("Spot exposure",
-             f"{_fmt_amount(a.spot_exposure_base, base_ccy)}   ({_fmt_amount(a.spot_exposure_usd, 'USD')})",
-             None),
             ("Leg PV near / far (USD)",
              f"{_fmt_amount(a.pv_near_leg_usd, 'USD')}   /   {_fmt_amount(a.pv_far_leg_usd, 'USD')}",
+             None),
+            ("Spot exposure (near + far)",
+             _fmt_amount(a.spot_exposure_usd, 'USD'),
              None),
             ("BBG mid (spot / pts / fwd)",
              f"{a.bbg_spot_mid:.5f} / {a.bbg_swap_points_mid:.2f} / {a.bbg_forward_mid:.5f}"
@@ -88,14 +88,6 @@ class TradePopup(ctk.CTkToplevel):
                      font=ctk.CTkFont(size=15, weight="bold"),
                      text_color=pnl_colour).grid(
             row=r, column=1, padx=(0, 16), pady=(10, 2), sticky="w")
-        r += 1
-
-        ctk.CTkLabel(self, text="Combined risk",
-                     font=ctk.CTkFont(size=13, weight="bold")).grid(
-            row=r, column=0, padx=(16, 10), pady=(0, 2), sticky="w")
-        ctk.CTkLabel(self, text=_fmt_amount(a.combined_risk_usd, "USD"),
-                     font=ctk.CTkFont(size=15, weight="bold")).grid(
-            row=r, column=1, padx=(0, 16), pady=(0, 2), sticky="w")
         r += 1
 
         ctk.CTkButton(self, text="Dismiss", width=90, command=self.destroy).grid(

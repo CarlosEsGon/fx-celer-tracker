@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS analysis (
     spot_exposure_usd    REAL,
     pv_near_leg_usd      REAL,
     pv_far_leg_usd       REAL,
-    combined_risk_usd    REAL,
     bbg_spot_mid         REAL,
     bbg_swap_points_mid  REAL,
     bbg_forward_mid      REAL,
@@ -126,12 +125,12 @@ class TradeStore:
                 """INSERT OR REPLACE INTO analysis
                    (trade_id, version, tenor_label, tenor_days,
                     spot_exposure_base, spot_exposure_usd,
-                    pv_near_leg_usd, pv_far_leg_usd, combined_risk_usd,
+                    pv_near_leg_usd, pv_far_leg_usd,
                     bbg_spot_mid, bbg_swap_points_mid, bbg_forward_mid, bbg_as_of,
                     inception_pnl_quote, inception_pnl_usd,
                     notional_mismatch, mid_fallback,
                     near_value_date, far_value_date, status, superseded, computed_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
                 (
                     a.trade_id,
                     a.version,
@@ -141,7 +140,6 @@ class TradeStore:
                     a.spot_exposure_usd,
                     a.pv_near_leg_usd,
                     a.pv_far_leg_usd,
-                    a.combined_risk_usd,
                     a.bbg_spot_mid,
                     a.bbg_swap_points_mid,
                     a.bbg_forward_mid,
@@ -184,7 +182,7 @@ class TradeStore:
     ) -> list[dict]:
         sql = """SELECT t.*, a.tenor_label, a.tenor_days, a.spot_exposure_base,
                         a.spot_exposure_usd, a.pv_near_leg_usd, a.pv_far_leg_usd,
-                        a.combined_risk_usd, a.bbg_spot_mid, a.bbg_swap_points_mid,
+                        a.bbg_spot_mid, a.bbg_swap_points_mid,
                         a.bbg_forward_mid, a.bbg_as_of, a.inception_pnl_quote,
                         a.inception_pnl_usd, a.notional_mismatch, a.mid_fallback,
                         a.near_value_date, a.far_value_date, a.computed_at

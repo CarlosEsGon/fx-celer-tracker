@@ -23,10 +23,9 @@ def analyze_trade(
     days, label = identify_tenor(trade, val_date)
 
     spot_base = exposure.spot_exposure_base(trade)
-    spot_usd = exposure.spot_exposure_usd(trade, fx_rates)
     pv_near_usd = exposure.pv_near_leg_usd(trade, fx_rates, df_near)
     pv_far_usd = exposure.pv_far_leg_usd(trade, fx_rates, df_far)
-    combined = exposure.combined_risk_usd(pv_near_usd, pv_far_usd)
+    spot_usd = pv_near_usd + pv_far_usd
     mismatch = exposure.notional_mismatch_base(trade)
 
     pnl_quote, pnl_usd = pnl.inception_pnl(trade, mid, df_far, fx_rates)
@@ -41,7 +40,6 @@ def analyze_trade(
         spot_exposure_usd=spot_usd,
         pv_near_leg_usd=pv_near_usd,
         pv_far_leg_usd=pv_far_usd,
-        combined_risk_usd=combined,
         bbg_spot_mid=mid.spot_mid,
         bbg_swap_points_mid=mid.swap_points_mid,
         bbg_forward_mid=mid.forward_mid,
