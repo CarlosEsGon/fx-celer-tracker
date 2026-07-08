@@ -90,8 +90,10 @@ class TradeAnalysis(BaseModel):
     tenor_days: int
     spot_exposure_base: float
     spot_exposure_usd: float
-    npv_far_leg_quote: float
-    npv_far_leg_usd: float
+    # USD-perspective leg PVs: USD-converted cash flow x USD DF for the leg's
+    # value date (near leg discounted too, for forward-starting trades).
+    pv_near_leg_usd: float
+    pv_far_leg_usd: float
     combined_risk_usd: float
     bbg_spot_mid: float
     bbg_swap_points_mid: float

@@ -2,12 +2,8 @@ from datetime import date
 
 import pytest
 
-from core.discount import discount_factor
 from core.models import Leg
 from core.pnl import inception_pnl, inception_pnl_quote
-
-VAL = date(2026, 7, 5)
-R_USD = 0.045
 
 
 def test_swap_pnl_on_points(swap_trade, eurusd_mid):
@@ -65,9 +61,9 @@ def test_uneven_reduces_to_points_when_matched(swap_trade, eurusd_mid):
     assert points == pytest.approx(near_pnl + far_pnl)
 
 
-def test_full_pnl_discounts_and_converts(swap_trade, eurusd_mid, fx_rates):
+def test_full_pnl_converts_then_discounts(swap_trade, eurusd_mid, fx_rates):
     raw = inception_pnl_quote(swap_trade, eurusd_mid)
-    df = discount_factor(VAL, date(2026, 10, 7), R_USD)
-    pnl_quote_pv, pnl_usd = inception_pnl(swap_trade, eurusd_mid, VAL, R_USD, fx_rates)
-    assert pnl_quote_pv == pytest.approx(raw * df)
-    assert pnl_usd == pytest.approx(raw * df)  # quote ccy is USD
+    df_far = 0.9884
+    pnl_quote, pnl_usd = inception_pnl(swap_trade, eurusd_mid, df_far, fx_rates)
+    assert pnl_quote == pytest.approx(raw)          # quote figure undiscounted
+    assert pnl_usd == pytest.approx(raw * df_far)   # quote ccy is USD

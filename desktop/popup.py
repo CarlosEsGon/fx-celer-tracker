@@ -33,7 +33,7 @@ class TradePopup(ctk.CTkToplevel):
         self.geometry("+80+80")
         self.resizable(False, False)
 
-        base_ccy, quote_ccy = a.currency_pair.split("/")
+        base_ccy = a.currency_pair.split("/")[0]
 
         header = ctk.CTkLabel(
             self,
@@ -56,8 +56,8 @@ class TradePopup(ctk.CTkToplevel):
             ("Spot exposure",
              f"{_fmt_amount(a.spot_exposure_base, base_ccy)}   ({_fmt_amount(a.spot_exposure_usd, 'USD')})",
              None),
-            ("Far-leg NPV",
-             f"{_fmt_amount(a.npv_far_leg_quote, quote_ccy)}   ({_fmt_amount(a.npv_far_leg_usd, 'USD')})",
+            ("Leg PV near / far (USD)",
+             f"{_fmt_amount(a.pv_near_leg_usd, 'USD')}   /   {_fmt_amount(a.pv_far_leg_usd, 'USD')}",
              None),
             ("BBG mid (spot / pts / fwd)",
              f"{a.bbg_spot_mid:.5f} / {a.bbg_swap_points_mid:.2f} / {a.bbg_forward_mid:.5f}"

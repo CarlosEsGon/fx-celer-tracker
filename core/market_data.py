@@ -39,9 +39,6 @@ class MarketDataProvider(ABC):
     @abstractmethod
     def get_fx_rates(self) -> dict[str, float]: ...
 
-    @abstractmethod
-    def get_discount_rate(self, currency: str) -> float: ...
-
 
 # --------------------------------------------------------------------------- #
 # Mock provider (local dev)
@@ -71,11 +68,6 @@ class MockBloombergProvider(MarketDataProvider):
         resp.raise_for_status()
         return resp.json()
 
-    def get_discount_rate(self, currency: str) -> float:
-        resp = self._client.get(f"{self._base}/curves/{currency}")
-        resp.raise_for_status()
-        return resp.json()["rate"]
-
 
 # --------------------------------------------------------------------------- #
 # Real Bloomberg Desktop API provider
@@ -94,13 +86,11 @@ class BlpapiProvider(MarketDataProvider):
         host: str = "localhost",
         port: int = 8194,
         tick_window_sec: int = 120,
-        discount_rates: dict[str, float] | None = None,
     ) -> None:
         import blpapi  # noqa: F401 — fail fast if unavailable
 
         self._blpapi = blpapi
         self._tick_window = timedelta(seconds=tick_window_sec)
-        self._discount_rates = discount_rates or {}
 
         opts = blpapi.SessionOptions()
         opts.setServerHost(host)
@@ -257,10 +247,3 @@ class BlpapiProvider(MarketDataProvider):
             if mid is not None:
                 rates[key] = mid
         return rates
-
-    def get_discount_rate(self, currency: str) -> float:
-        # Flat per-currency rates from config in v1 (see settings.yaml);
-        # swap for curve retrieval in v2.
-        return self._discount_rates.get(
-            currency.upper(), self._discount_rates.get("default", 0.03)
-        )

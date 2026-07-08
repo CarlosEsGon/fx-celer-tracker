@@ -33,7 +33,7 @@ def test_last_booked_at_for_catchup(tmp_path, swap_trade, outright_trade):
 
 def test_analysis_persist_and_query(tmp_path, swap_trade, eurusd_mid, fx_rates):
     store = _store(tmp_path)
-    analysis = analyze_trade(swap_trade, eurusd_mid, fx_rates, quote_ccy_rate=0.045)
+    analysis = analyze_trade(swap_trade, eurusd_mid, fx_rates, 0.9995, 0.9884)
     store.save_trade(swap_trade)
     store.save_analysis(analysis)
 

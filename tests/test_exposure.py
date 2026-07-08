@@ -5,8 +5,8 @@ import pytest
 from core import exposure
 from core.models import Leg, ProductType
 
-VAL = date(2026, 7, 5)
-R_USD = 0.045
+DF_NEAR = 0.9995
+DF_FAR = 0.9884
 
 
 def test_swap_spot_exposure_is_near_leg_base(swap_trade):
@@ -17,26 +17,37 @@ def test_outright_spot_exposure_is_single_leg_base(outright_trade):
     assert exposure.spot_exposure_base(outright_trade) == -500_000
 
 
-def test_swap_npv_discounts_far_quote_flow(swap_trade):
-    df = 1 / (1 + R_USD * 94 / 360)
-    assert exposure.npv_far_leg_quote(swap_trade, VAL, R_USD) == pytest.approx(
-        1_168_000 * df
+def test_swap_pv_near_leg_usd(swap_trade, fx_rates):
+    # near leg: +1,000,000 EUR -> USD at 1.1650, then x DF(near date)
+    assert exposure.pv_near_leg_usd(swap_trade, fx_rates, DF_NEAR) == pytest.approx(
+        1_165_000 * DF_NEAR
     )
 
 
-def test_outright_npv_discounts_single_leg(outright_trade):
-    df = 1 / (1 + R_USD * 94 / 360)
-    assert exposure.npv_far_leg_quote(outright_trade, VAL, R_USD) == pytest.approx(
-        635_000 * df
+def test_swap_pv_far_leg_usd(swap_trade, fx_rates):
+    # far leg: +1,168,000 USD quote flow x DF(far date)
+    assert exposure.pv_far_leg_usd(swap_trade, fx_rates, DF_FAR) == pytest.approx(
+        1_168_000 * DF_FAR
+    )
+
+
+def test_outright_leg_pvs_use_single_leg(outright_trade, fx_rates):
+    # single leg is both the exposure leg and the discounted leg
+    assert exposure.pv_near_leg_usd(outright_trade, fx_rates, DF_FAR) == pytest.approx(
+        -500_000 * 1.27 * DF_FAR
+    )
+    assert exposure.pv_far_leg_usd(outright_trade, fx_rates, DF_FAR) == pytest.approx(
+        635_000 * DF_FAR
     )
 
 
 def test_usd_conversion_and_combined(swap_trade, fx_rates):
     spot_usd = exposure.spot_exposure_usd(swap_trade, fx_rates)
     assert spot_usd == pytest.approx(1_165_000)
-    npv_usd = exposure.npv_far_leg_usd(swap_trade, VAL, R_USD, fx_rates)
-    assert exposure.combined_risk_usd(spot_usd, npv_usd) == pytest.approx(
-        spot_usd + npv_usd
+    pv_near = exposure.pv_near_leg_usd(swap_trade, fx_rates, DF_NEAR)
+    pv_far = exposure.pv_far_leg_usd(swap_trade, fx_rates, DF_FAR)
+    assert exposure.combined_risk_usd(pv_near, pv_far) == pytest.approx(
+        pv_near + pv_far
     )
 
 
