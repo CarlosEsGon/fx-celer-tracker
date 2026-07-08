@@ -31,14 +31,15 @@ def test_swap_analysis_complete(swap_trade, eurusd_mid, fx_rates):
 
 
 def test_outright_analysis_complete(outright_trade, gbpusd_mid, fx_rates):
-    a = analyze_trade(outright_trade, gbpusd_mid, fx_rates, DF_FAR, DF_FAR)
+    a = analyze_trade(outright_trade, gbpusd_mid, fx_rates, DF_NEAR, DF_FAR)
 
     assert a.product_type == "FX_OUTRIGHT"
     assert a.spot_exposure_base == -500_000          # single leg IS spot exposure
-    # No far leg to offset -> full directional exposure = single leg PV
-    assert a.pv_far_leg_usd == 0.0
-    assert a.spot_exposure_usd == pytest.approx(-635_000 * DF_FAR)
-    assert a.spot_exposure_usd == pytest.approx(a.pv_near_leg_usd)
+    # Valued as a matched swap: synthetic near leg (spot hedge) offsets the
+    # single far-settling leg, leaving only the discounting spread.
+    assert a.pv_near_leg_usd == pytest.approx(635_000 * DF_NEAR)
+    assert a.pv_far_leg_usd == pytest.approx(-635_000 * DF_FAR)
+    assert a.spot_exposure_usd == pytest.approx(635_000 * (DF_NEAR - DF_FAR))
     assert a.tenor_days == 94
     assert a.tenor_label == "3M"
     assert a.near_value_date == date(2026, 10, 7)
@@ -60,9 +61,9 @@ def test_discount_factors_scale_leg_pvs(swap_trade, eurusd_mid, fx_rates):
 
 def test_valuation_date_only_affects_tenor(outright_trade, gbpusd_mid, fx_rates):
     # Outright tenor runs valuation date -> leg value date (swaps: near -> far)
-    a_trade_date = analyze_trade(outright_trade, gbpusd_mid, fx_rates, DF_FAR, DF_FAR)
+    a_trade_date = analyze_trade(outright_trade, gbpusd_mid, fx_rates, DF_NEAR, DF_FAR)
     a_spot = analyze_trade(
-        outright_trade, gbpusd_mid, fx_rates, DF_FAR, DF_FAR,
+        outright_trade, gbpusd_mid, fx_rates, DF_NEAR, DF_FAR,
         valuation_date=date(2026, 7, 7),
     )
     assert a_spot.tenor_days == a_trade_date.tenor_days - 2

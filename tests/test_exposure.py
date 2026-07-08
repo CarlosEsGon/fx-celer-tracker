@@ -33,11 +33,16 @@ def test_swap_spot_exposure_is_sum_of_leg_pvs(swap_trade, fx_rates):
     assert spot == pytest.approx(1_165_000 * DF_NEAR - 1_165_000 * DF_FAR)
 
 
-def test_outright_far_leg_is_zero_full_directional(outright_trade, fx_rates):
-    # No far leg to offset: spot exposure = the single leg's discounted value.
-    assert exposure.pv_far_leg_usd(outright_trade, fx_rates, DF_FAR) == 0.0
-    spot = exposure.spot_exposure_usd(outright_trade, fx_rates, DF_FAR, DF_FAR)
-    assert spot == pytest.approx(-500_000 * 1.27 * DF_FAR)
+def test_outright_valued_as_matched_swap(outright_trade, fx_rates):
+    # Synthetic near leg: same amount as the single leg, opposite direction
+    # (the spot hedge). Sold 500k GBP forward -> synthetic near buys 500k.
+    pv_near = exposure.pv_near_leg_usd(outright_trade, fx_rates, DF_NEAR)
+    assert pv_near == pytest.approx(500_000 * 1.27 * DF_NEAR)
+    pv_far = exposure.pv_far_leg_usd(outright_trade, fx_rates, DF_FAR)
+    assert pv_far == pytest.approx(-500_000 * 1.27 * DF_FAR)
+    # Notionals cancel: only the discounting spread survives.
+    spot = exposure.spot_exposure_usd(outright_trade, fx_rates, DF_NEAR, DF_FAR)
+    assert spot == pytest.approx(500_000 * 1.27 * (DF_NEAR - DF_FAR))
 
 
 def test_matched_swap_has_no_mismatch(swap_trade):
