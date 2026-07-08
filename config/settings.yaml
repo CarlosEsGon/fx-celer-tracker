@@ -8,6 +8,8 @@ voice:
 popup:
   digest_threshold: 5    # more than N trades in one burst -> single digest popup
   auto_close_seconds: 0  # 0 = stay open until dismissed
+  watched_currencies: [] # only these ccys trigger a popup; [] = no filter (all)
+  exposure_threshold_usd: 0  # popup only if |spot exposure USD| >= this; 0 = always
 
 analytics:
   # valuation date convention: trade_date (default) or spot (T+2, when confirmed)

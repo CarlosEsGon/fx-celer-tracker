@@ -9,6 +9,10 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
+# Quick-select currencies offered in the popup settings window; any other
+# currency seen in trade history can still be watched individually.
+MAIN_CURRENCIES = ["CHF", "AUD", "JPY", "EUR", "GBP"]
+
 
 @dataclass
 class Settings:
@@ -39,6 +43,10 @@ class Settings:
     # app
     voice_enabled: bool = True
     digest_threshold: int = 5
+    # Trade popup filters. Empty set = no currency filter (watch everything,
+    # including currencies not seen yet); 0 threshold = always notify.
+    watched_currencies: set = field(default_factory=set)
+    exposure_threshold_usd: float = 0.0
     db_path: str = "data/trades.db"
     valuation_date_mode: str = "trade_date"   # trade_date | spot
     discount_rates: dict = field(default_factory=dict)
@@ -95,6 +103,10 @@ def load_settings(
     popup_cfg = cfg.get("popup", {})
     if "digest_threshold" in popup_cfg and os.getenv("DIGEST_THRESHOLD") is None:
         s.digest_threshold = int(popup_cfg["digest_threshold"])
+    s.watched_currencies = {
+        str(c).upper() for c in (popup_cfg.get("watched_currencies") or [])
+    }
+    s.exposure_threshold_usd = float(popup_cfg.get("exposure_threshold_usd", 0.0))
     analytics_cfg = cfg.get("analytics", {})
     s.valuation_date_mode = analytics_cfg.get("valuation_date", s.valuation_date_mode)
     s.discount_rates = {
@@ -102,6 +114,23 @@ def load_settings(
     }
     s.tenor_buckets = cfg.get("tenor_buckets") or []
     return s
+
+
+def save_popup_settings(
+    s: Settings,
+    yaml_path: str | Path = "config/settings.yaml",
+) -> None:
+    """Persist watched_currencies / exposure_threshold_usd so they survive a
+    restart. Note: rewrites the whole file via yaml.safe_dump, so any hand-
+    written comments in settings.yaml are lost on save."""
+    yaml_file = Path(yaml_path)
+    cfg: dict = {}
+    if yaml_file.exists():
+        cfg = yaml.safe_load(yaml_file.read_text(encoding="utf-8")) or {}
+    popup_cfg = cfg.setdefault("popup", {})
+    popup_cfg["watched_currencies"] = sorted(s.watched_currencies)
+    popup_cfg["exposure_threshold_usd"] = s.exposure_threshold_usd
+    yaml_file.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
 
 
 def build_feed(s: Settings):
