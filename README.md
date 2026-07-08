@@ -200,6 +200,70 @@ spot risk and PnL per trade in its compact table.
   `bbg_probe.py` (Bloomberg retrieval chain), `celer_probe.py` (websocket
   frame capture)
 
+## File reference
+
+Every tracked file, what it's for.
+
+### `core/` — pure logic, unit tested, no UI/IO framework dependencies
+
+| File | Purpose |
+|------|---------|
+| `models.py` | Pydantic schema: `Leg`, `Trade` (with `exposure_leg`/`discounted_leg` properties that pick near-vs-single and far-vs-single leg by product type), `MidSnapshot`, `TradeAnalysis` — the single source of truth for the app's data shapes |
+| `config.py` | `Settings` dataclass; `load_settings()` merges `.env` (secrets/URLs/selection) with `config/settings.yaml` (behaviour); `save_popup_settings()` persists the popup currency/threshold filters back to YAML; `MAIN_CURRENCIES` constant; `build_feed()` / `build_market_data()` / `build_discount_curve()` factories that pick the mock vs. real implementation per `Settings` |
+| `tenor.py` | Calendar-day tenor calculation and ON…1Y/`>1Y` bucketing (`identify_tenor`) |
+| `discount.py` | ACT/360 money-market discount factor/PV math (`discount_factor`, `present_value`) — used only by the mock discount curve now |
+| `discount_curve.py` | The DAS integration seam: `DiscountCurve` protocol, `MockDiscountCurve` (flat USD rate, local dev), `DasDiscountCurve` (lazy-imports `das_client`, work-only) |
+| `fx.py` | USD conversion (`convert_to_usd`, direct/inverse/identity `usd_rate`) and pip-size lookup (`pip_factor`) |
+| `exposure.py` | USD leg-PV valuation: `pv_near_leg_usd`/`pv_far_leg_usd`, `spot_exposure_usd` (their sum — the net spot risk), `notional_mismatch_base` (uneven swaps) |
+| `pnl.py` | Inception PnL vs the Bloomberg mid at execution: swap points, outright forward, uneven leg-by-leg; converts to USD then discounts at the far leg's USD DF |
+| `analyzer.py` | `analyze_trade()` — wires tenor + exposure + PnL together into one `TradeAnalysis` per trade |
+| `market_data.py` | `MarketDataProvider` interface; `MockBloombergProvider` (mock server's `/bbg/mid` + `/fx-rates`); `BlpapiProvider` (real Bloomberg Desktop API, broken-date tick retrieval chain with fallbacks) |
+| `trade_feed.py` | `TradeFeed` interface; shared websocket machinery (reconnect/backoff, liveness timeout, REST snapshot catch-up, raw-frame capture) in `_WebsocketFeed`; `MockCelerFeed` (local mock) and `RealCelerFeed` (real Celer, frame mapping is the one thing to adjust on day 1) |
+| `hist_trades.py` | The **verified** `/histTrades` REST adapter: scaling (×1e6), null sentinels, dealt-currency notionals (base vs. terms), SPOT/CAD-cross filtering, §5 validation warnings, plus the polling `HistTradesFeed` |
+| `store.py` | SQLite persistence (`TradeStore`): trade + analysis tables, dedupe by `(trade_id, version)`, catch-up bookmark (`last_booked_at`), auto-migration of older schemas, `distinct_currencies()` for the popup settings UI, CSV export |
+
+### `desktop/` — CustomTkinter app
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Entry point (`python -m desktop.app`); `TrackerApp` owns the Tkinter main loop, main window, UI event queue pump, burst-window batching into single/digest popups, and the Popup settings / voice controls |
+| `listener.py` | `FeedListener` — runs the feed + market-data + discount-curve calls on a worker thread; `_should_notify()` gates popups by watched currency + spot-risk threshold; `_near_settlement()` picks the synthetic near-leg date for outrights; retry loop for trades whose market data failed |
+| `popup.py` | `TradePopup` (single trade: dates, spot risk, conditional mismatch/fallback), `DigestPopup` (scrollable list for bursts/catch-up), `NoticePopup` (cancellations, PnL-pending, auto-dismiss) |
+| `settings_window.py` | `SettingsWindow` — the Popup settings UI: main + dynamic "other" currency checkboxes, the spot-risk threshold field, live-apply + YAML persistence |
+| `voice.py` | `VoiceAnnouncer` (pyttsx3 on its own thread, queued so the UI never blocks); `trade_summary()`/`digest_summary()` build the spoken text (spot risk only, no PnL) |
+| `logging_setup.py` | Rotating file handler (`data/logs/tracker.log`) + console logging setup |
+
+### `mock_celer/` — local mock server (`uvicorn mock_celer.server:app`)
+
+| File | Purpose |
+|------|---------|
+| `server.py` | FastAPI app: `WS /ws/trades` push feed (with replay), `POST /trades` to inject + broadcast, `GET /trades`/`/trades/{id}` snapshot, `GET /fx-rates`, `GET /curves/{ccy}`, `GET /bbg/mid` |
+| `market.py` | Deterministic mock market data: seeded spot mids/FX rates/discount rates per pair, hash-based reproducible "noise" so the same `(pair, value_date, as_of)` always answers the same mid |
+| `schemas.py` | Pydantic wire schemas for the mock server (`TradeIn`, `LegIn`, `BbgMidOut`) — a mirror of `core.models` for the HTTP/WS boundary |
+| `sample_trade_swap.json`, `sample_trade_outright.json` | Fixture payloads for `POST /trades` (used in the Quick Start `curl` example) |
+
+### `scripts/` — day-1 standalone probes (not imported by the app)
+
+| File | Purpose |
+|------|---------|
+| `bbg_probe.py` | Walks the real Bloomberg retrieval chain for one pair/date and prints raw responses per step — run first to debug terminal connectivity |
+| `hist_probe.py` | Fetches the real `/histTrades` array, runs every record through the production parser, prints per-trade summaries + validation warnings + a productType census |
+| `celer_probe.py` | Connects to the real Celer websocket and dumps raw frames to `data/celer_frames.jsonl` for comparing against `RealCelerFeed._parse_frame` |
+
+### `tests/` — pytest, run via `pytest` (config in `pyproject.toml`)
+
+One file per `core/` module (`test_models` logic is covered inline via fixtures in `conftest.py`, which defines the shared `swap_trade`/`outright_trade`/`fx_rates`/mid fixtures used throughout): `test_tenor.py`, `test_discount.py`, `test_discount_curve.py`, `test_fx.py`, `test_exposure.py`, `test_pnl.py`, `test_analyzer.py`, `test_market_data.py` (mock provider determinism), `test_trade_feed.py` (websocket reconnect/backoff/catch-up), `test_hist_trades.py` (the two documented real payloads + edge cases), `test_store.py` (round-trips, migration, lifecycle, CSV export).
+
+### Root / config files
+
+| File | Purpose |
+|------|---------|
+| `.env.example` | Template for `.env` — feed/market-data/discount-source selection, URLs, credentials placeholders (copy to `.env`, which is gitignored) |
+| `config/settings.yaml` | Non-secret behaviour: voice settings, popup digest/currency-filter/threshold, valuation-date mode, mock discount rates, tenor bucket table |
+| `pyproject.toml` | Pytest config only (`testpaths`, `pythonpath`, default args) |
+| `requirements.txt` | Python dependencies (`blpapi` deliberately excluded — installed separately at work, see Day 1 runbook) |
+| `.github/workflows/ci.yml` | GitHub Actions: installs core/test deps (skips `customtkinter`/`pyttsx3`, desktop-only) and runs `pytest` on push/PR |
+
 ### Known limits (v1)
 
 - Mock discount curve is a flat rate per currency (indicative, not a full
